@@ -15,7 +15,7 @@ func main() {
 	//fmt.Printf("%v\n", SmartParallelPi())
 	//fmt.Printf("%v\n", ParallelPi())
 	//fmt.Printf("%v\n", SmarterParallelPi())
-	fmt.Printf("%v\n", ParallelPi10())
+	fmt.Printf("%v\n", ParallelPi20())
 }
 
 func IterPi() float64 {
@@ -315,7 +315,7 @@ func ParallelPi9() float64 {
 
 func ParallelPi10() float64 {
 	numCores := int64(runtime.NumCPU())
-	numberOfIter := int64((10000000000 / numCores) * numCores)
+	numberOfIter := int64((1000000 / numCores) * numCores)
 
 	results := make([]int, numCores)
 
@@ -337,6 +337,377 @@ func ParallelPi10() float64 {
 			}
 			results[i] = count
 			wg.Done()
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi11() float64 {
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	randSource := func() (valueStream chan *PairOfFloats) {
+		valueStream = make(chan *PairOfFloats)
+		go func() {
+			var i int64
+			for i = 0; i < numberOfIter; i++ {
+				valueStream <- &PairOfFloats{rand.Float64(), rand.Float64()}
+			}
+			close(valueStream)
+		}()
+		return valueStream
+	}
+	valueStream := randSource()
+
+	wg := sync.WaitGroup{}
+	wg.Add(int(numCores))
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			count := 0
+			for v := range valueStream {
+				x := v.x*2 - 1
+				y := v.y*2 - 1
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			results[i] = count
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi12() float64 {
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	resultChan := make(chan int, numCores)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			count := 0
+			randSource := rand.New(rand.NewSource(time.Now().UnixNano() + i))
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Int63()) / (1 << 62)) - 1
+				y := (float64(randSource.Int63()) / (1 << 62)) - 1
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			resultChan <- count
+		}()
+	}
+	trueCount := 0
+	var doneCount int64
+	for {
+		select {
+		case v := <-resultChan:
+			doneCount++
+			trueCount = trueCount + v
+			if doneCount >= numCores {
+				return float64(trueCount) / (float64(numberOfIter) / 4.0)
+			}
+		}
+	}
+}
+
+func ParallelPi13() float64 {
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	resultChan := make(chan int, numCores)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			count := 0
+			randSource := rand.New(rand.NewSource(time.Now().UnixNano() + i))
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Int63()) / (1 << 63))
+				y := (float64(randSource.Int63()) / (1 << 63))
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			resultChan <- count
+		}()
+	}
+	trueCount := 0
+	var doneCount int64
+	for {
+		select {
+		case v := <-resultChan:
+			doneCount++
+			trueCount = trueCount + v
+			if doneCount >= numCores {
+				return float64(trueCount) / (float64(numberOfIter) / 4.0)
+			}
+		}
+	}
+}
+
+func ParallelPi14() float64 {
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	resultChan := make(chan int, numCores)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			count := 0
+			randSource := rand.New(rand.NewSource(time.Now().UnixNano() + i))
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Uint64()) / (1 << 64))
+				y := (float64(randSource.Uint64()) / (1 << 64))
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			resultChan <- count
+		}()
+	}
+	trueCount := 0
+	var doneCount int64
+	for {
+		select {
+		case v := <-resultChan:
+			doneCount++
+			trueCount = trueCount + v
+			if doneCount >= numCores {
+				return float64(trueCount) / (float64(numberOfIter) / 4.0)
+			}
+		}
+	}
+}
+
+func ParallelPi15() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.New(rand.NewSource(time.Now().UnixNano() + i))
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Int63()) / (1 << 63))
+				y := (float64(randSource.Int63()) / (1 << 63))
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			results[i] = count
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi16() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.NewSource(time.Now().UnixNano() + i)
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Int63()) / (1 << 63))
+				y := (float64(randSource.Int63()) / (1 << 63))
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			results[i] = count
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi17() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.NewSource(time.Now().UnixNano() + i).(rand.Source64)
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Uint64()) / (1 << 64))
+				y := (float64(randSource.Uint64()) / (1 << 64))
+				if (math.Sqrt(x*x + y*y)) < 1 {
+					count++
+				}
+			}
+			results[i] = count
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi18() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.NewSource(time.Now().UnixNano() + i).(rand.Source64)
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Uint64()) / (1 << 64))
+				y := (float64(randSource.Uint64()) / (1 << 64))
+				if int64(math.Sqrt(x*x+y*y)) == 1 {
+					count++
+				}
+			}
+			results[i] = count
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi19() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.NewSource(time.Now().UnixNano() + i).(rand.Source64)
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Uint64()) / (1 << 63))
+				y := (float64(randSource.Uint64()) / (1 << 63))
+				if math.Sqrt(x*x+y*y) < 4 {
+					count++
+				}
+			}
+			results[i] = count
+		}()
+	}
+	wg.Wait()
+	trueCount := 0
+	for _, v := range results {
+		trueCount += v
+	}
+	return float64(trueCount) / (float64(numberOfIter) / 4.0)
+}
+
+func ParallelPi20() float64 {
+	numCoresInt := runtime.NumCPU()
+	numCores := int64(runtime.NumCPU())
+	numberOfIter := int64((1000000 / numCores) * numCores)
+
+	results := make([]int, numCores)
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(numCoresInt)
+	var i int64
+	for i = 0; i < numCores; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			count := 0
+			randSource := rand.NewSource(time.Now().UnixNano() + i)
+			var j int64
+			for j = 0; j < (numberOfIter / numCores); j++ {
+				x := (float64(randSource.Int63()) / (1 << 63))
+				y := (float64(randSource.Int63()) / (1 << 63))
+				if (x*x + y*y) < 1 {
+					count++
+				}
+			}
+			results[i] = count
 		}()
 	}
 	wg.Wait()
